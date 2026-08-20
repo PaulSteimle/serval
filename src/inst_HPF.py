@@ -18,13 +18,22 @@ R = 53000. # resolving power
 pat = '*.fits'
 pmax = 2048 - 300
 iomax = 28
-oset = "[4,5,6,14,15,16,17,18,26]"
-coset = "[4,5,6,14,15,16,17,18,26]"
+oset = [4,5,6,14,15,16,17,18,26]
+coset = oset
 
 maskfile = 'telluric_mask_carm_short.dat'
 skyfile = 'sky_mask_5_sigma.dat'
 blazefile = 'hpf_blaze_spectra.fits'  # https://github.com/grzeimann/Goldilocks_Documentation/blob/master/hpf_blaze_spectra.fits
 
+# these are the old setting pre atm cal 
+oset_atmspec = sorted(set(range(iomax)) - {10,11,12,20,21,22})   # these are the orders that are not used for telluric modeling
+coset_atmspec = oset_atmspec   # these are the orders that are not used for telluric modeling
+
+atmspec = 'atm_hpf.fits'
+atmspec_mask = 'telluric_mask_hpf_0.25_limit.dat'   # the 0.25 in the filename shows the transmission limit for the telluric lines 
+                                                    # lines that cannot be corrected
+
+atm_cal_order = [23, 27]   # these are the best orders; they are fitted simultaneously, o30 is mainly for O2 and o32 and o33 are for H2O.
 
 # Instrument read functions
 def scan(self, s, orders=None, pfits=True, verb=True):
@@ -47,11 +56,11 @@ def scan(self, s, orders=None, pfits=True, verb=True):
    hdulist = self.hdulist = pyfits.open(s) # slow 30 ms
    self.header = hdr = hdulist[0].header
    self.instname = hdr['INSTRUME']
-   self.drsberv = hdr.get('BERV', np.nan)
-   self.drsbjd = hdr.get('BJD', np.nan) + 2400000
+   self.drsberv = hdr.get('BRVCORR', 0)
+   self.drsbjd = hdr.get('BJD', 0) + 2400000
    self.dateobs = hdr['DATE-OBS']
    self.mjd = Time(self.dateobs, format='isot', scale='utc').mjd
-   self.sn55 = hdr.get('SNR', 50)
+   self.sn55 = hdr.get('SNR',  20)
    self.fileid = hdr.get('DATE-OBS', 0) 
    self.timeid = self.fileid
 
@@ -59,9 +68,13 @@ def scan(self, s, orders=None, pfits=True, verb=True):
 
    self.ra = hdr['RA']
    self.de = hdr['DEC']
-   self.airmass = hdr.get('AIRMASS', np.nan)
+   self.za = hdr.get('ZA', np.nan)
+   try: self.za = float(self.za)
+   except: self.za = np.nan
+   self.airmass = hdr.get('AIRMASS', 1/np.cos(np.deg2rad(self.za)))
    self.exptime = hdr['ITIME']
    self.tmmean = 0.5
+   self.relhum = hdr.get('ENVHUM', np.nan)
 
    if 'Goldilocks' in self.filename:
       self.drift = hdr.get(HIERARCH+'LRVCORR', np.nan)
@@ -126,6 +139,8 @@ def data_goldilocks(self, orders, pfits=True):
       #f, e = skysub_orders([w,f,e,wsky,sky,esky]) # sky subtraction disabled
 
    bpmap = np.isnan(f).astype(int)            # flag 1 for nan
+
+   w, f, e, bpmap 
 
    with np.errstate(invalid='ignore'):
       bpmap[f < -3*e] |= flag.neg
@@ -280,6 +295,7 @@ def skysub_orders(dat):
         f,e = np.array([skysub_wfit(*tuple(d)) for d in dat]).swapaxes(0, 1)
         return f,e
 
+
 # Deblazing function
 def deblaze(f,e,orders,channel=1):
     '''
@@ -294,7 +310,8 @@ def deblaze(f,e,orders,channel=1):
     b = np.array([bb/np.nanmedian(bb) for bb in b]) 
 
     # devide flux by blaze function
-    f = f/b
-    e = e/b
+    with np.errstate(invalid='ignore'):
+      f = f/b
+      e = e/b
     
     return f,e

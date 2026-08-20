@@ -22,8 +22,8 @@ coset_atmspec = oset_atmspec   # these are the orders that are not used for tell
 default_fib = 'A'  # default fiber for science spectra
 
 maskfile = 'telluric_mask_nir4.dat'
-#atmspec = 'atm_carm_nir.fits'
-#atmspec_mask = 'telluric_mask_CARM_NIR_0.25_limit.dat'   # the 0.25 in the filename shows the transmission limit for the telluric lines
+atmspec = 'atm_carm_nir.fits'
+atmspec_mask = 'telluric_mask_CARM_NIR_0.25_limit.dat'   # the 0.25 in the filename shows the transmission limit for the telluric lines 
                                                          # lines that cannot be corrected; needed for CARM NIR. Other limits are also provided under /lib.
                                                          # In first tests, the 0.25 limit seems to be a good compromise between masking too many lines and
                                                          # not masking enough lines that are not corrected properly and yield the best results for Barnard's Star.
@@ -114,6 +114,16 @@ def data(self, orders, pfits=True):
       hdulist['SPEC']._axes = hdulist['WAVE']._axes = hdulist['SIG']._axes = [4080, 28]
 
       bpmap = np.isnan(f).astype(int)   # flag 1 for nan
+      #f = hdulist['SPEC'].data
+      # "data" atribute seems to open again the fits file. For large data set (GJ273) this lead to "error: too many files open". So use "section"
+      # reshape orders to half-orders; bad hack to stick with section (should we avoid data.reshape?)
+      hdulist['SPEC']._axes = hdulist['WAVE']._axes = hdulist['SIG']._axes = [2040, 56]
+      f = 1.*hdulist['SPEC'].section[orders]
+      w = hdulist['WAVE'].section[orders]
+      e = hdulist['SIG'].section[orders]
+      hdulist['SPEC']._axes = hdulist['WAVE']._axes = hdulist['SIG']._axes = [4080, 28]
+
+      bpmap = np.isnan(f).astype(int)   # flag 1 for nan
       if self.fox:
          # scale spectrum
          e = e * 100000.
@@ -127,4 +137,3 @@ def data(self, orders, pfits=True):
       bpmap[f < -3*e] |= flag.neg
       bpmap[e==0] |= flag.nan
       return w, f, e, bpmap
-

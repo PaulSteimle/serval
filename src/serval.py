@@ -1443,7 +1443,7 @@ def serval():
          TPLrv = spt.ccf.rvc
 
          if atmspec:
-            ok = (spt.bpmap[atm_o] == 0) & (spt.f[atm_o] / spt.e[atm_o] > 3)
+            ok = (spt.bpmap[atm_o] == 0) & (spt.f[atm_o] / spt.e[atm_o] > 3) & (skymsk(spt.w[atm_o]) < 0.01)
             spt.atm_par = atm.fit_atm_par(spt.w[atm_o][ok], spt.f[atm_o][ok], o=atm_o, a1=None if atm_cal_dry else spt.airmass)
 
             spt.f0 = 1 * spt.f
@@ -1455,16 +1455,19 @@ def serval():
             spt.bpmap[np.isnan(yatm)] |= flag.atm
 
             for o in looka:
-               gplot.xlabel('"wavelength"')
-               gplot.key(f'title "{obj} (o = {o})"')
-
-               ok_o = (spt.bpmap[o] == 0) & (spt.f[o] / spt.e[o] > 3)
+               
+               sky_mask = ~(skymsk(spt.w[o]) < 0.01)
+               ok_o = (spt.bpmap[o] == 0) & (spt.f[o] / spt.e[o] > 3) & (skymsk(spt.w[o]) < 0.01)
                if not np.any(ok_o):
                   mean_o = 1.0
                   ok_o = np.ones_like(spt.f[o], dtype=bool)
                else:
                   mean_o = np.nanmean(spt.f[o][ok_o])
+
+               gplot.xlabel('"wavelength"')
+               gplot.key(f'title "{obj} (o = {o})"')
                gplot(np.exp(spt.w[o][ok_o]), spt.f0[o][ok_o]/mean_o, 'w lp lc 9 pt 7 t "input",',
+                     np.exp(spt.w[o][sky_mask]), spt.f0[o][sky_mask]/mean_o, 'w p lc 5 pt 7 t "flagged sky",',
                      np.exp(spt.w[o]), spt.f[o]/mean_o, 'w lp lc 1 pt 6 t "corrected",',
                      np.exp(spt.w[o]), np.nanmedian(spt.f0[o])  *yatm[o]/mean_o, 'w l lc 7 lw 2 t "atm model"')
                pause(o, *spt.atm_par)
@@ -1632,11 +1635,12 @@ def serval():
                        # compute here for cases skippre or vtfix
 
                        print('atm_cal_order:', atm_o, 'airmass:', sp.airmass)
-                       sp_atm = sp.get_data(pfits=2, orders=atm_o)
-                       ok = (sp_atm.bpmap == 0) & (sp_atm.f / sp_atm.e > 3)
+                       sp_atm = sp.get_data(pfits=2, orders=atm_o, orders=atm_o)
+                       ok = (sp_atm.bpmap == 0) & (sp_atm.f / sp_atm.e > 3) & (skymsk(sp_atm.w) < 0.01)
 
                        sp.atm_par = atm.fit_atm_par(sp_atm.w[ok], sp_atm.f[ok], o=atm_o, a1=None if atm_cal_dry else sp.airmass)
                    atm_par = sp.atm_par
+
                sp = sp.get_data(pfits=2, orders=o)
                if atmspec:
                    yatm = atm.calc_atm(sp.w, atm_par, order=o)
@@ -2178,13 +2182,13 @@ def serval():
          sp.read_data()
 
          if atmspec:
-            ok = (sp.bpmap[atm_o] == 0) & (sp.f[atm_o] / sp.e[atm_o] > 3)
-            atm_par = atm.fit_atm_par(sp.w[atm_o][ok], sp.f[atm_o][ok], o=atm_o, a1=None if atm_cal_dry else sp.airmass)
+            ok_o = (sp.bpmap[atm_o] == 0) & (sp.f[atm_o] / sp.e[atm_o] > 3) & (skymsk(sp.w[atm_o]) < 0.01)
+            atm_par = atm.fit_atm_par(sp.w[atm_o][ok_o], sp.f[atm_o][ok_o], o=atm_o, a1=None if atm_cal_dry else sp.airmass)
 
             if 0:
                if atm_cal_dry:
                   # compare cal pars for c1 based on airmass and fitted c1
-                  atm_par_am = atm.fit_atm_par(sp.w[atm_o][ok], sp.f[atm_o][ok], o=atm_o, a1=sp.airmass)
+                  atm_par_am = atm.fit_atm_par(sp.w[atm_o][ok_o], sp.f[atm_o][ok_o], o=atm_o, a1=sp.airmass)
                   print('atm_par_no_am', ', '.join([f'{x[0]:.3f} vs {x[1]:.3f}' for x in zip(atm_par, atm_par_am)]))
 
             # store atm coefficients
@@ -2202,15 +2206,33 @@ def serval():
                 yO2 = atm.calc_atm(sp.w, [*sp.atm_par[0:2], 0])
                 yH2O = atm.calc_atm(sp.w, [sp.atm_par[0], 0, sp.atm_par[2]])
                 # create a new mask for each order, because the atm mask is not necessarily the same as the original mask
-                ok_o = (sp.bpmap[o] == 0) & (sp.f[o] / sp.e[o] > 3)
+                ok_o = (sp.bpmap[o] == 0) & (spt.f[o] / sp.e[o] > 3) & (skymsk(sp.w[o]) < 0.01)
                 if not np.any(ok_o):
                   mean_o = 1.0
                   ok_o = np.ones_like(spt.f[o], dtype=bool)
                 else:
                   mean_o = np.nanmean(spt.f[o][ok_o])
                 mean_o = np.nanmean(sp.f[o][ok_o])
+
+                sky_mask = (skymsk(sp.w[o]) > 0.01)
                 gplot.key('tit "%s (n=%s, o=%s)"' % (obj, n, o))
-                gplot(sp.w[o][ok_o], sp.f0[o][ok_o]/mean_o, sp.f[o][ok_o]/mean_o, yH2O[o][ok_o]+1, yO2[o][ok_o]+1, 'w lp pt 7 ps 0.5 lc 9 t "input", "" us 1:3 w l lc 1 lw 2 t "atm corrected", "" us 1:4 w l lc 3 lw 1 t "H2O", "" us 1:5 w l lc 2 lw 1 t "O2"')
+                gplot(sp.w[o][ok_o],
+                      sp.f0[o][ok_o]/mean_o,
+                      sp.f[o][ok_o]/mean_o,
+                      yH2O[o][ok_o]+1,
+                      yO2[o][ok_o]+1,
+                      'w lp pt 7 ps 0.5 lc 9 t "input", '
+                      '"" us 1:3 w l lc 1 lw 2 t "atm corrected", '
+                      '"" us 1:4 w l lc 3 lw 1 t "H2O", '
+                      '"" us 1:5 w l lc 2 lw 1 t "O2", ',
+                      sp.w[o][sky_mask],
+                      sp.f0[o][sky_mask]/mean_o,
+                      'w p lc 5 pt 7 t "flagged sky"')
+               #  gplot(sp.w[o][ok_o], sp.f0[o][ok_o]/mean_o, 'w lp pt 7 ps 0.5 lc 9 t "input"',
+               #        sp.w[o][ok_o], sp.f[o][ok_o]/mean_o,'w lp pt 7 ps 0.5 lc 1 t "atm corrected"',
+               #        sp.w[o][sky_mask], sp.f[o][sky_mask]/mean_o,'w p lc 5 pt 7 t "flagged sky"',
+               #        sp.w[o][ok_o], yH2O[o][ok_o]+1, 'us 1:4 w l lc 3 lw 1 t "H2O"',
+               #        sp.w[o][ok_o], yO2[o][ok_o]+1, 'us 1:5 w l lc 2 lw 1 t "O2"')
                 pause('airmass: %.3f, atm_par O2: %.3f' % (sp.airmass, sp.atm_par[1]))
 
          bjd[n] = sp.bjd
