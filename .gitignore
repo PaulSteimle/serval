@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+
+# Compiled files
+*.o
+*.so
+
+# serval files
+src/BarCor/bary.e
+
+# Local CARM NIR installation files
+lib/atm_hpf.fits
+lib/sky_mask_5_sigma.dat
+lib/telluric_mask_CARM_NIR_0.01_limit.dat
+lib/telluric_mask_CARM_NIR_0.5_limit.dat
+lib/telluric_mask_CARM_NIR_0.75_limit.dat
+lib/telluric_mask_CARM_NIR_0.9_limit.dat
+lib/telluric_mask_hpf_0.25_limit.dat
+
