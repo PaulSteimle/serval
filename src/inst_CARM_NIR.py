@@ -22,16 +22,16 @@ coset_atmspec = oset_atmspec   # these are the orders that are not used for tell
 default_fib = 'A'  # default fiber for science spectra
 
 maskfile = 'telluric_mask_nir4.dat'
-atmspec = 'atm_carm_nir.fits'
-atmspec_mask = 'telluric_mask_CARM_NIR_0.25_limit.dat'   # the 0.25 in the filename shows the transmission limit for the telluric lines 
+# atmspec = 'atm_carm_nir.fits'
+# atmspec_mask = 'telluric_mask_CARM_NIR_0.25_limit.dat'   # the 0.25 in the filename shows the transmission limit for the telluric lines 
                                                          # lines that cannot be corrected; needed for CARM NIR. Other limits are also provided under /lib.
                                                          # In first tests, the 0.25 limit seems to be a good compromise between masking too many lines and
                                                          # not masking enough lines that are not corrected properly and yield the best results for Barnard's Star.
-skyfile = 'sky_carm_nir'
+skyfile = 'sky_mask_carm_nir.dat'
 
 pat = '*-nir_%(fib)s.fits *-nir_%(fib)s-tac.fits'   # => nir_A.fits, nir_B.fits
 
-atm_cal_order = [30, 32, 33]   # these are the best orders; they are fitted simultaneously, o30 is mainly for O2 and o32 and o33 are for H2O.
+# atm_cal_order = [30, 32, 33]   # these are the best orders; they are fitted simultaneously, o30 is mainly for O2 and o32 and o33 are for H2O.
 
 def scan(self, s, pfits=True):
    """
