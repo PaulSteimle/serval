@@ -104,6 +104,7 @@ def scan(self, s, pfits=True):
 def data(self, orders, pfits=True):
    hdulist = self.hdulist
    if 1:  # read order data
+      
       #f = hdulist['SPEC'].data
       # "data" atribute seems to open again the fits file. For large data set (GJ273) this lead to "error: too many files open". So use "section"
       # reshape orders to half-orders; bad hack to stick with section (should we avoid data.reshape?)
@@ -112,18 +113,8 @@ def data(self, orders, pfits=True):
       w = hdulist['WAVE'].section[orders]
       e = hdulist['SIG'].section[orders]
       hdulist['SPEC']._axes = hdulist['WAVE']._axes = hdulist['SIG']._axes = [4080, 28]
-
       bpmap = np.isnan(f).astype(int)   # flag 1 for nan
-      #f = hdulist['SPEC'].data
-      # "data" atribute seems to open again the fits file. For large data set (GJ273) this lead to "error: too many files open". So use "section"
-      # reshape orders to half-orders; bad hack to stick with section (should we avoid data.reshape?)
-      hdulist['SPEC']._axes = hdulist['WAVE']._axes = hdulist['SIG']._axes = [2040, 56]
-      f = 1.*hdulist['SPEC'].section[orders]
-      w = hdulist['WAVE'].section[orders]
-      e = hdulist['SIG'].section[orders]
-      hdulist['SPEC']._axes = hdulist['WAVE']._axes = hdulist['SIG']._axes = [4080, 28]
 
-      bpmap = np.isnan(f).astype(int)   # flag 1 for nan
       if self.fox:
          # scale spectrum
          e = e * 100000.
