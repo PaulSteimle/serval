@@ -1443,7 +1443,8 @@ def serval():
          TPLrv = spt.ccf.rvc
 
          if atmspec:
-            ok = (spt.bpmap[atm_o] == 0) & (spt.f[atm_o] / spt.e[atm_o] > 3) & (skymsk(spt.w[atm_o]) < 0.01)
+            # no sky mask in the atm fit: in the atm_cal_order it covers nearly all telluric lines
+            ok = (spt.bpmap[atm_o] == 0) & (spt.f[atm_o] / spt.e[atm_o] > 3)
             spt.atm_par = atm.fit_atm_par(spt.w[atm_o][ok], spt.f[atm_o][ok], o=atm_o, a1=None if atm_cal_dry else spt.airmass)
 
             spt.f0 = 1 * spt.f
@@ -1457,7 +1458,7 @@ def serval():
             for o in looka:
                
                sky_mask = ~(skymsk(spt.w[o]) < 0.01)
-               ok_o = (spt.bpmap[o] == 0) & (spt.f[o] / spt.e[o] > 3) & (skymsk(spt.w[o]) < 0.01)
+               ok_o = (spt.bpmap[o] == 0) & (spt.f[o] / spt.e[o] > 3)
                if not np.any(ok_o):
                   mean_o = 1.0
                   ok_o = np.ones_like(spt.f[o], dtype=bool)
@@ -1633,10 +1634,9 @@ def serval():
                if atmspec:
                    if not hasattr(sp, 'atm_par'):
                        # compute here for cases skippre or vtfix
-
                        print('atm_cal_order:', atm_o, 'airmass:', sp.airmass)
-                       sp_atm = sp.get_data(pfits=2, orders=atm_o, orders=atm_o)
-                       ok = (sp_atm.bpmap == 0) & (sp_atm.f / sp_atm.e > 3) & (skymsk(sp_atm.w) < 0.01)
+                       sp_atm = sp.get_data(pfits=2, orders=atm_o)
+                       ok = (sp_atm.bpmap == 0) & (sp_atm.f / sp_atm.e > 3)
 
                        sp.atm_par = atm.fit_atm_par(sp_atm.w[ok], sp_atm.f[ok], o=atm_o, a1=None if atm_cal_dry else sp.airmass)
                    atm_par = sp.atm_par
@@ -2182,7 +2182,7 @@ def serval():
          sp.read_data()
 
          if atmspec:
-            ok_o = (sp.bpmap[atm_o] == 0) & (sp.f[atm_o] / sp.e[atm_o] > 3) & (skymsk(sp.w[atm_o]) < 0.01)
+            ok_o = (sp.bpmap[atm_o] == 0) & (sp.f[atm_o] / sp.e[atm_o] > 3)
             atm_par = atm.fit_atm_par(sp.w[atm_o][ok_o], sp.f[atm_o][ok_o], o=atm_o, a1=None if atm_cal_dry else sp.airmass)
 
             if 0:
@@ -2206,33 +2206,18 @@ def serval():
                 yO2 = atm.calc_atm(sp.w, [*sp.atm_par[0:2], 0])
                 yH2O = atm.calc_atm(sp.w, [sp.atm_par[0], 0, sp.atm_par[2]])
                 # create a new mask for each order, because the atm mask is not necessarily the same as the original mask
-                ok_o = (sp.bpmap[o] == 0) & (spt.f[o] / sp.e[o] > 3) & (skymsk(sp.w[o]) < 0.01)
+                ok_o = (sp.bpmap[o] == 0) & (sp.f[o] / sp.e[o] > 3) & (skymsk(sp.w[o]) < 0.01)
                 if not np.any(ok_o):
                   mean_o = 1.0
-                  ok_o = np.ones_like(spt.f[o], dtype=bool)
+                  ok_o = np.ones_like(sp.f[o], dtype=bool)
                 else:
-                  mean_o = np.nanmean(spt.f[o][ok_o])
-                mean_o = np.nanmean(sp.f[o][ok_o])
+                  mean_o = np.nanmean(sp.f[o][ok_o])
 
                 sky_mask = (skymsk(sp.w[o]) > 0.01)
                 gplot.key('tit "%s (n=%s, o=%s)"' % (obj, n, o))
-                gplot(sp.w[o][ok_o],
-                      sp.f0[o][ok_o]/mean_o,
-                      sp.f[o][ok_o]/mean_o,
-                      yH2O[o][ok_o]+1,
-                      yO2[o][ok_o]+1,
-                      'w lp pt 7 ps 0.5 lc 9 t "input", '
-                      '"" us 1:3 w l lc 1 lw 2 t "atm corrected", '
-                      '"" us 1:4 w l lc 3 lw 1 t "H2O", '
-                      '"" us 1:5 w l lc 2 lw 1 t "O2", ',
-                      sp.w[o][sky_mask],
-                      sp.f0[o][sky_mask]/mean_o,
-                      'w p lc 5 pt 7 t "flagged sky"')
-               #  gplot(sp.w[o][ok_o], sp.f0[o][ok_o]/mean_o, 'w lp pt 7 ps 0.5 lc 9 t "input"',
-               #        sp.w[o][ok_o], sp.f[o][ok_o]/mean_o,'w lp pt 7 ps 0.5 lc 1 t "atm corrected"',
-               #        sp.w[o][sky_mask], sp.f[o][sky_mask]/mean_o,'w p lc 5 pt 7 t "flagged sky"',
-               #        sp.w[o][ok_o], yH2O[o][ok_o]+1, 'us 1:4 w l lc 3 lw 1 t "H2O"',
-               #        sp.w[o][ok_o], yO2[o][ok_o]+1, 'us 1:5 w l lc 2 lw 1 t "O2"')
+                gplot(sp.w[o][ok_o], sp.f0[o][ok_o]/mean_o, sp.f[o][ok_o]/mean_o, yH2O[o][ok_o]+1, yO2[o][ok_o]+1,
+                      'w lp pt 7 ps 0.5 lc 9 t "input", "" us 1:3 w l lc 1 lw 2 t "atm corrected", "" us 1:4 w l lc 3 lw 1 t "H2O", "" us 1:5 w l lc 2 lw 1 t "O2", ',
+                      sp.w[o][sky_mask], sp.f0[o][sky_mask]/mean_o, 'w p lc 5 pt 7 t "flagged sky"')
                 pause('airmass: %.3f, atm_par O2: %.3f' % (sp.airmass, sp.atm_par[1]))
 
          bjd[n] = sp.bjd
@@ -2748,7 +2733,7 @@ if __name__ == "__main__":
    preparser = argparse.ArgumentParser(add_help=False)
    preparser.add_argument('args', nargs='*')
    preparser.add_argument('-inst', help='instrument', default='HARPS', choices=insts)
-   preparser.add_argument('-atmspec', default='auto')
+   preparser.add_argument('-atmspec', default='auto', nargs='?', const='auto')
    preparser.add_argument('-atmmask', default='auto', dest='atmmask_file')
    preparser.add_argument('-fib', default='')
    preparser.add_argument('-skymsk', default='auto', dest='skyfile')
@@ -2781,6 +2766,7 @@ if __name__ == "__main__":
 
    # resolve 'auto' first, regardless of whether it came from an explicit flag or the default
    atmspec = inst_atmspec if preargs.atmspec == 'auto' else preargs.atmspec
+   atmspec = '' if atmspec == 'None' else atmspec
 
    atmmask_file = inst_atmmask_file if preargs.atmmask_file == 'auto' else preargs.atmmask_file
 
@@ -2819,7 +2805,7 @@ if __name__ == "__main__":
    argopt('-append', help='Append serval results. (WARNING: Secular acceleration resets. Use with option tpl or last. Do not mix result of different templates.)', action='store_true')
    argopt('-atm_cal_dry', help='Calibrate also the dry content when modelling the telluric spectrum; default: the coefficient is predicted with airmass', default=False, action='store_true')
    argopt('-atm_cal_order', help='Order to calibrate the telluric spectrum'+default, default=atm_cal_order, type=arg2slice)
-   argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, nargs='?', type=str, default=atmspec, const='auto')
+   argopt('-atmspec', help='Telluric components (e.g. atm_carm_vis.fits or stdAtmos_vis.fits in lib/) to correct spectra by simple division'+default, type=str, nargs='?', default=atmspec, const='auto')
    argopt('-atmmask', help='Telluric line mask ("" for no masking)'+default, nargs='?', default=atmmask_file, const='auto', type=str, dest='atmmask_file')
    argopt('-atmwgt', help='Downweighting factor for coadding in telluric regions'+default, type=float, default=None)
    argopt('-brvref', help='Barycentric RV code reference'+default, choices=brvrefs, type=str, default='WE')

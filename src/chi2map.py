@@ -208,8 +208,9 @@ class Chi2Map:
 
             self.crx = cov.Xc[1] * 1000
             self.e_crx = cov.e_a[1] * 1000
-         except:
+         except Exception as e:
             print("warning: mlCRX failed.")
+            print(e)
 
       if 0:
       # scipy optimisation

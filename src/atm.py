@@ -58,9 +58,13 @@ def load(filename):
         w = hdu['WAVE'].data
         f1 = hdu['O2'].data
         f2 = hdu['H2O'].data
-        c0 = hdu[0].header['C1_REF']      # linear relation to transform airmass to coefficients
-        c1 = hdu[0].header['C1_SCALE']
-        airmass_to_c1 = np.poly1d((1.1*c1, c0))
+        c0 = hdu[0].header.get('C1_REF')      # linear relation to transform airmass to coefficients
+        c1 = hdu[0].header.get('C1_SCALE')
+
+        if c0 is not None and c1 is not None:
+            airmass_to_c1 = np.poly1d((1.1*c1, c0))
+        else:
+            airmass_to_c1 = None
 
         # setup a model
         tpl1 = v1*w, 1.*f1
@@ -107,14 +111,15 @@ def fit_atm_par(ln_wave, f, a1=None, o=None):
 
     A = np.c_[atm1*0+1, np.log(atm1), np.log(atm2)]
     y = f[ok]
-    if a1 is not None:
+
+    if a1 is not None and airmass_to_c1 is not None:
         A = A[:, [0,2]]
         c1 = airmass_to_c1(a1)
         y /= atm1 ** c1
 
     atm_par = np.linalg.lstsq(A, np.log(y), rcond=None)[0]
 
-    if a1 is not None:
+    if a1 is not None and airmass_to_c1 is not None:
         # insert the airmass coefficient c1 into the parameter array
         atm_par = np.array([atm_par[0], c1, atm_par[1]])
 

@@ -10,8 +10,11 @@ from pause import *
 from wstat import nanwsem, wmean, mlrms, wstd
 try:
    import gls
-except:
-   print('Cannot import gls')
+except ImportError:
+   try:
+      import rv_tools.gls as gls
+   except ImportError:
+      print('Cannot import gls')
 
 try:
     import astropy.io.fits as pyfits
@@ -44,18 +47,20 @@ class srv:
 
    '''
 
-   def __init__(self, obj, fibsuf='', oidx=None, pdf=False, cen=False):
+   def __init__(self, obj, fibsuf='', oidx=None, pdf=False, cen=False, verbose=True):
       '''
       Load all SERVAL products into an object.
 
       obj : Folder with the SERVAL products.
       '''
+      self.verbose = verbose
       self.dir = obj
       self.tag = tag = obj.rstrip('/').split('/')[-1]
       self.pre = pre = obj+'/'+tag
       self.rms = np.nan
 
-      print(pre+'.rvc'+fibsuf+'.dat')
+      if self.verbose:
+         print(pre+'.rvc'+fibsuf+'.dat')
       self.allrv = genfromtxt2d(pre+'.rvo'+fibsuf+'.dat')
       sbjd = np.genfromtxt(pre+'.rvo'+fibsuf+'.dat', dtype=('|S33'), usecols=[0])   # as string
       self.snr = genfromtxt2d(pre+'.snr'+fibsuf+'.dat')
@@ -303,15 +308,19 @@ class srv:
         pass
 
 
-   def stat(self):
+   def stat(self, verbose=None):
       '''
       Periodanalysis of RV data.
       '''
       self.mlrms = mlrms(self.RVc, e=self.e_RVc)
-      print('N:     ', self.N)
-      print('T [d]:     ', self.bjd.max() - self.bjd.min())
-      print('mlrms_RVc [m/s]:  %.2f\njitter [m/s]:     %.2f' % self.mlrms)
-      print('med(eRVc) [m/s]:  %.2f' % np.nanmedian(self.e_RVc))
+
+      if verbose is not None: self.verbose = verbose
+      
+      if self.verbose:
+         print('N:     ', self.N)
+         print('T [d]:     ', self.bjd.max() - self.bjd.min())
+         print('mlrms_RVc [m/s]:  %.2f\njitter [m/s]:     %.2f' % self.mlrms)
+         print('med(eRVc) [m/s]:  %.2f' % np.nanmedian(self.e_RVc))
       #pause()
 
    def plotrvno(self, rvobkg=False):
